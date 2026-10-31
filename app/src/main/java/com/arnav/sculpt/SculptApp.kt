@@ -1,5 +1,8 @@
 package com.arnav.sculpt
 
+import com.arnav.sculpt.camera.CameraScreen
+import com.arnav.sculpt.gallery.GalleryScreen
+import com.arnav.sculpt.settings.SettingsScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge

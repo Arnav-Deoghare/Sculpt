@@ -1,5 +1,7 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.settings
 
+import com.arnav.sculpt.data.Pose
+import com.arnav.sculpt.data.SettingsStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

@@ -1,5 +1,10 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.gallery
 
+import com.arnav.sculpt.data.PhotoItem
+import com.arnav.sculpt.data.PhotoStore
+import com.arnav.sculpt.data.Pose
+import com.arnav.sculpt.data.SettingsStore
+import com.arnav.sculpt.util.ImageUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image

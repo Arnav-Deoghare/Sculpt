@@ -1,4 +1,4 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.camera
 
 import androidx.camera.core.ImageCapture
 import androidx.compose.foundation.Canvas

@@ -1,5 +1,6 @@
 package com.arnav.sculpt
 
+import com.arnav.sculpt.data.SettingsStore
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent

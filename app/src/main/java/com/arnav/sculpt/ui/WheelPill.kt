@@ -1,4 +1,4 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background

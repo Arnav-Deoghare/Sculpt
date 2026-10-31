@@ -1,4 +1,4 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.data
 
 import android.content.Context
 

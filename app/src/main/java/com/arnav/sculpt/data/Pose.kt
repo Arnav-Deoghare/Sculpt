@@ -1,4 +1,4 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.data
 
 /**
  * The poses a user can shoot. [id] is stored in each photo's file name,

@@ -1,4 +1,4 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.util
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

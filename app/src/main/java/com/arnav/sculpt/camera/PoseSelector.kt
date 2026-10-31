@@ -1,5 +1,8 @@
-package com.arnav.sculpt
+package com.arnav.sculpt.camera
 
+import com.arnav.sculpt.data.Pose
+import com.arnav.sculpt.ui.WheelOption
+import com.arnav.sculpt.ui.WheelPill
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
