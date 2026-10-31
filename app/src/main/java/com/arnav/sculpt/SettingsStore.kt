@@ -12,6 +12,7 @@ object SettingsStore {
     private const val KEY_GHOST_ON = "ghost_on"
     private const val KEY_GHOST_ALPHA = "ghost_alpha"
     private const val KEY_TIMER = "timer_seconds"
+    private const val KEY_FLASH = "flash_mode"
 
     private val DEFAULT_POSES = listOf(Pose.FRONT, Pose.BACK, Pose.LEFT, Pose.RIGHT)
 
@@ -79,5 +80,13 @@ object SettingsStore {
 
     fun setTimerSeconds(context: Context, seconds: Int) {
         prefs(context).edit().putInt(KEY_TIMER, seconds).apply()
+    }
+
+    /** One of ImageCapture.FLASH_MODE_OFF / AUTO / ON. Defaults to off (value 2). */
+    fun flashMode(context: Context): Int =
+        prefs(context).getInt(KEY_FLASH, 2)
+
+    fun setFlashMode(context: Context, mode: Int) {
+        prefs(context).edit().putInt(KEY_FLASH, mode).apply()
     }
 }
