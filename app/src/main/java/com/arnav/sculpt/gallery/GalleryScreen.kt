@@ -1,9 +1,7 @@
 package com.arnav.sculpt.gallery
 
-import com.arnav.sculpt.data.PhotoItem
-import com.arnav.sculpt.data.PhotoStore
-import com.arnav.sculpt.data.Pose
-import com.arnav.sculpt.data.SettingsStore
+import com.arnav.sculpt.appContainer
+import com.arnav.sculpt.data.db.PhotoEntity
 import com.arnav.sculpt.util.ImageUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -29,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -45,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -52,6 +52,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val dayFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault())
@@ -63,16 +64,26 @@ private fun zoned(millis: Long): ZonedDateTime =
 
 private fun photoWord(count: Int) = if (count == 1) "photo" else "photos"
 
-private fun poseLabel(photo: PhotoItem, customName: String): String? =
-    Pose.fromId(photo.poseId)?.label(customName)
+/** A photo row paired with its image file. */
+private data class GalleryPhoto(val entity: PhotoEntity, val file: File) {
+    val takenAt: Long get() = entity.takenAt
+    val poseId: String? get() = entity.poseId
+}
+
+/** Name of the photo's pose (including removed custom poses), or null if it has none. */
+private fun poseLabel(photo: GalleryPhoto, names: Map<String, String>): String? =
+    photo.poseId?.let { names[it] }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GalleryScreen() {
-    val context = LocalContext.current
-    val customName = remember { SettingsStore.customPoseName(context) }
-    var photos by remember { mutableStateOf(PhotoStore.all(context)) }
-    var viewing by remember { mutableStateOf<PhotoItem?>(null) }
+    val container = LocalContext.current.appContainer
+    val entities by container.photos.photos.collectAsState(initial = emptyList())
+    val names by container.poses.namesById.collectAsState(initial = emptyMap())
+    val photos = remember(entities) {
+        entities.map { GalleryPhoto(it, container.photos.file(it)) }
+    }
+    var viewing by remember { mutableStateOf<GalleryPhoto?>(null) }
     var selection by remember { mutableStateOf<Set<String>>(emptySet()) }
     var confirmDelete by remember { mutableStateOf(false) }
     val selectionMode = selection.isNotEmpty()
@@ -142,7 +153,7 @@ fun GalleryScreen() {
                         items(dayPhotos, key = { it.file.name }) { photo ->
                             GalleryThumb(
                                 photo = photo,
-                                poseLabel = poseLabel(photo, customName),
+                                poseLabel = poseLabel(photo, names),
                                 selected = photo.file.name in selection,
                                 onClick = {
                                     if (selectionMode) {
@@ -165,11 +176,10 @@ fun GalleryScreen() {
         viewing?.let { photo ->
             PhotoViewer(
                 photo = photo,
-                poseLabel = poseLabel(photo, customName),
+                poseLabel = poseLabel(photo, names),
                 onClose = { viewing = null },
                 onDelete = {
-                    PhotoStore.delete(listOf(photo.file))
-                    photos = PhotoStore.all(context)
+                    container.appScope.launch { container.photos.delete(listOf(photo.entity)) }
                     viewing = null
                 }
             )
@@ -183,8 +193,8 @@ fun GalleryScreen() {
             text = { Text("This can't be undone.") },
             confirmButton = {
                 TextButton(onClick = {
-                    PhotoStore.delete(photos.filter { it.file.name in selection }.map { it.file })
-                    photos = PhotoStore.all(context)
+                    val doomed = photos.filter { it.file.name in selection }.map { it.entity }
+                    container.appScope.launch { container.photos.delete(doomed) }
                     selection = emptySet()
                     confirmDelete = false
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
@@ -215,7 +225,7 @@ private fun DayHeader(date: LocalDate, count: Int) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GalleryThumb(
-    photo: PhotoItem,
+    photo: GalleryPhoto,
     poseLabel: String?,
     selected: Boolean,
     onClick: () -> Unit,
@@ -276,7 +286,7 @@ private fun GalleryThumb(
 
 @Composable
 private fun PhotoViewer(
-    photo: PhotoItem,
+    photo: GalleryPhoto,
     poseLabel: String?,
     onClose: () -> Unit,
     onDelete: () -> Unit

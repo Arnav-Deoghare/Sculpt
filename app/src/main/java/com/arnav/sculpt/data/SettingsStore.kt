@@ -2,19 +2,19 @@ package com.arnav.sculpt.data
 
 import android.content.Context
 
-/** Simple persisted app settings. Photos are never touched by this. */
+/** Simple persisted app settings. Photos and poses live in the database, not here. */
 object SettingsStore {
     private const val PREFS = "sculpt_settings"
     private const val KEY_DARK = "dark_mode"
-    private const val KEY_POSES = "enabled_poses"
-    private const val KEY_CUSTOM_NAME = "custom_pose_name"
     private const val KEY_SELECTED_POSE = "selected_pose"
     private const val KEY_GHOST_ON = "ghost_on"
     private const val KEY_GHOST_ALPHA = "ghost_alpha"
     private const val KEY_TIMER = "timer_seconds"
     private const val KEY_FLASH = "flash_mode"
 
-    private val DEFAULT_POSES = listOf(Pose.FRONT, Pose.BACK, Pose.LEFT, Pose.RIGHT)
+    // Only read by the one-time migration from the pre-database version.
+    private const val KEY_LEGACY_CUSTOM_NAME = "custom_pose_name"
+    private const val KEY_MIGRATED = "db_migrated"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -29,27 +29,7 @@ object SettingsStore {
         prefs(context).edit().putBoolean(KEY_DARK, dark).apply()
     }
 
-    // ---- Poses ------------------------------------------------------------
-
-    /** Poses shown in the camera, always in the fixed Pose order, never empty. */
-    fun enabledPoses(context: Context): List<Pose> {
-        val saved = prefs(context).getString(KEY_POSES, null) ?: return DEFAULT_POSES
-        val ids = saved.split(",").filter { it.isNotBlank() }.toSet()
-        return Pose.entries.filter { it.id in ids }.ifEmpty { DEFAULT_POSES }
-    }
-
-    fun setEnabledPoses(context: Context, poses: List<Pose>) {
-        prefs(context).edit()
-            .putString(KEY_POSES, poses.joinToString(",") { it.id })
-            .apply()
-    }
-
-    fun customPoseName(context: Context): String =
-        prefs(context).getString(KEY_CUSTOM_NAME, "") ?: ""
-
-    fun setCustomPoseName(context: Context, name: String) {
-        prefs(context).edit().putString(KEY_CUSTOM_NAME, name).apply()
-    }
+    // ---- Camera -----------------------------------------------------------
 
     fun selectedPoseId(context: Context): String? =
         prefs(context).getString(KEY_SELECTED_POSE, null)
@@ -57,8 +37,6 @@ object SettingsStore {
     fun setSelectedPoseId(context: Context, id: String) {
         prefs(context).edit().putString(KEY_SELECTED_POSE, id).apply()
     }
-
-    // ---- Camera helpers ---------------------------------------------------
 
     fun ghostOn(context: Context): Boolean =
         prefs(context).getBoolean(KEY_GHOST_ON, true)
@@ -88,5 +66,17 @@ object SettingsStore {
 
     fun setFlashMode(context: Context, mode: Int) {
         prefs(context).edit().putInt(KEY_FLASH, mode).apply()
+    }
+
+    // ---- One-time migration -----------------------------------------------
+
+    fun legacyCustomName(context: Context): String =
+        prefs(context).getString(KEY_LEGACY_CUSTOM_NAME, "") ?: ""
+
+    fun isMigrated(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_MIGRATED, false)
+
+    fun setMigrated(context: Context) {
+        prefs(context).edit().putBoolean(KEY_MIGRATED, true).apply()
     }
 }

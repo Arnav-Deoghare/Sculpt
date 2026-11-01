@@ -1,8 +1,8 @@
 package com.arnav.sculpt.camera
 
-import com.arnav.sculpt.data.PhotoStore
-import com.arnav.sculpt.data.Pose
+import com.arnav.sculpt.appContainer
 import com.arnav.sculpt.data.SettingsStore
+import com.arnav.sculpt.data.db.PoseEntity
 import com.arnav.sculpt.ui.WheelOption
 import com.arnav.sculpt.ui.WheelPill
 import com.arnav.sculpt.util.ImageUtils
@@ -40,7 +40,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -119,22 +121,35 @@ private fun PermissionNeeded(onRequest: () -> Unit) {
 
 @Composable
 private fun CameraContent() {
+    val container = LocalContext.current.appContainer
+    val poses by container.poses.enabledPoses.collectAsState(initial = emptyList())
+
+    if (poses.isEmpty()) {
+        // Only visible for an instant while the poses load.
+        Box(Modifier.fillMaxSize().background(Color.Black))
+    } else {
+        CameraBody(poses)
+    }
+}
+
+@Composable
+private fun CameraBody(poses: List<PoseEntity>) {
     val context = LocalContext.current
+    val container = context.appContainer
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
 
-    // Poses chosen in Settings. Read once per visit to the camera tab.
-    val poses = remember { SettingsStore.enabledPoses(context) }
-    val customName = remember { SettingsStore.customPoseName(context) }
-    var poseIndex by remember {
-        mutableIntStateOf(
-            poses.indexOfFirst { it.id == SettingsStore.selectedPoseId(context) }.coerceAtLeast(0)
-        )
-    }
-    val currentPose = poses[poseIndex.coerceIn(0, poses.lastIndex)]
+    // The selected pose is tracked by id, so it survives poses being added or hidden in Settings.
+    var selectedId by remember { mutableStateOf(SettingsStore.selectedPoseId(context)) }
+    val poseIndex = poses.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
+    val currentPose = poses[poseIndex]
+    val currentPoseNow by rememberUpdatedState(currentPose)
+
+    val photos by container.photos.photos.collectAsState(initial = emptyList())
+    val counts by container.photos.countsByPose.collectAsState(initial = emptyMap())
+    val lastPhoto: File? = photos.firstOrNull()?.let { container.photos.file(it) }
 
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
-    var lastPhoto by remember { mutableStateOf<File?>(PhotoStore.latest(context)) }
 
     var ghostOn by remember { mutableStateOf(SettingsStore.ghostOn(context)) }
     var ghostAlpha by remember { mutableFloatStateOf(SettingsStore.ghostAlpha(context)) }
@@ -161,16 +176,8 @@ private fun CameraContent() {
     }
 
     // Remember the selected pose between visits.
-    LaunchedEffect(poseIndex) {
+    LaunchedEffect(currentPose.id) {
         SettingsStore.setSelectedPoseId(context, currentPose.id)
-    }
-
-    // Photo count per pose, shown in the pose picker. Refreshed after every capture.
-    val counts = remember(lastPhoto) {
-        PhotoStore.all(context)
-            .mapNotNull { it.poseId }
-            .groupingBy { it }
-            .eachCount()
     }
 
     // Stop any running countdown when leaving the camera tab.
@@ -179,8 +186,8 @@ private fun CameraContent() {
     }
 
     // Ghost overlay: the most recent photo of the currently selected pose.
-    val ghostFile = remember(currentPose, lastPhoto) {
-        PhotoStore.latestFor(context, currentPose.id)
+    val ghostFile: File? = remember(currentPose.id, photos) {
+        photos.firstOrNull { it.poseId == currentPose.id }?.let { container.photos.file(it) }
     }
     val ghostBitmap by produceState<ImageBitmap?>(initialValue = null, ghostFile) {
         value = ghostFile?.let {
@@ -212,8 +219,8 @@ private fun CameraContent() {
         }
     }
 
-    fun capture(pose: Pose) {
-        val file = PhotoStore.newFile(context, pose.id)
+    fun capture(pose: PoseEntity) {
+        val file = container.photos.newFile()
         val options = ImageCapture.OutputFileOptions.Builder(file).build()
         imageCapture.takePicture(
             options,
@@ -221,10 +228,13 @@ private fun CameraContent() {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     Log.i(TAG, "Saved ${file.absolutePath}")
-                    lastPhoto = file
+                    // Record the photo in the database; appScope so it finishes even if the
+                    // screen is left right after the shot.
+                    container.appScope.launch { container.photos.add(file, pose.id) }
                     // Move on to the next pose after a photo is taken.
                     if (poses.size > 1) {
-                        poseIndex = (poses.indexOf(pose) + 1) % poses.size
+                        val next = (poses.indexOfFirst { it.id == pose.id } + 1) % poses.size
+                        selectedId = poses[next].id
                     }
                 }
 
@@ -252,7 +262,7 @@ private fun CameraContent() {
                     delay(1000)
                 }
                 countdown = 0
-                capture(poses[poseIndex.coerceIn(0, poses.lastIndex)])
+                capture(currentPoseNow)
             } finally {
                 countdown = 0
                 countdownJob = null
@@ -342,7 +352,7 @@ private fun CameraContent() {
                     )
                 } else {
                     Text(
-                        text = "No earlier ${currentPose.label(customName)} photo yet",
+                        text = "No earlier ${currentPose.name} photo yet",
                         color = Color.White,
                         fontSize = 12.sp,
                         modifier = Modifier
@@ -377,10 +387,9 @@ private fun CameraContent() {
         ) {
             PoseSelector(
                 poses = poses,
-                customName = customName,
                 selectedIndex = poseIndex,
                 counts = counts,
-                onSelect = { poseIndex = it }
+                onSelect = { selectedId = poses[it].id }
             )
 
             Spacer(Modifier.height(16.dp))
