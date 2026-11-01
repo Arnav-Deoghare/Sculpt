@@ -78,6 +78,21 @@ class PoseRepository(private val dao: PoseDao) {
         return true
     }
 
+    /** Brings back a custom pose removed a moment ago (used by Undo). */
+    suspend fun restoreCustom(id: String) {
+        val target = dao.getAll().firstOrNull { it.id == id && !it.builtIn && it.archived } ?: return
+        dao.update(target.copy(archived = false, enabled = true))
+    }
+
+    /** Saves a new pose order. Poses not listed (removed customs) keep their place at the end. */
+    suspend fun reorder(ids: List<String>) {
+        val all = dao.getAll()
+        val byId = all.associateBy { it.id }
+        val ordered = ids.mapNotNull { byId[it] }
+        val rest = all.filter { it.id !in ids }
+        dao.updateAll((ordered + rest).mapIndexed { i, p -> p.copy(sortOrder = i) })
+    }
+
     private fun cleanName(name: String): String? =
         name.trim().take(MAX_NAME_LENGTH).takeIf { it.isNotEmpty() }
 

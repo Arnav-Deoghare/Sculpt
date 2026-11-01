@@ -14,15 +14,17 @@ fun PoseSelector(
     poses: List<PoseEntity>,
     selectedIndex: Int,
     counts: Map<String, Int>,
+    doneToday: Set<String>,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val options = remember(poses, counts) {
+    val options = remember(poses, counts, doneToday) {
         poses.map { pose ->
             val count = counts[pose.id] ?: 0
+            val done = pose.id in doneToday
             WheelOption(
-                label = pose.name,
-                detail = if (count == 1) "1 photo" else "$count photos"
+                label = if (done) "✓ ${pose.name}" else pose.name,
+                detail = if (done) "done today" else if (count == 1) "1 photo" else "$count photos"
             )
         }
     }

@@ -17,6 +17,19 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,7 +78,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.arnav.sculpt.data.db.PhotoEntity
 import java.io.File
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -76,7 +93,7 @@ private const val TAG = "SculptCamera"
 private val TIMER_OPTIONS = listOf(0, 3, 5, 10)
 
 @Composable
-fun CameraScreen() {
+fun CameraScreen(onDone: () -> Unit = {}) {
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(
@@ -93,7 +110,7 @@ fun CameraScreen() {
     }
 
     if (hasPermission) {
-        CameraContent()
+        CameraContent(onDone)
     } else {
         PermissionNeeded(onRequest = { launcher.launch(Manifest.permission.CAMERA) })
     }
@@ -120,7 +137,7 @@ private fun PermissionNeeded(onRequest: () -> Unit) {
 }
 
 @Composable
-private fun CameraContent() {
+private fun CameraContent(onDone: () -> Unit) {
     val container = LocalContext.current.appContainer
     val poses by container.poses.enabledPoses.collectAsState(initial = emptyList())
 
@@ -128,12 +145,12 @@ private fun CameraContent() {
         // Only visible for an instant while the poses load.
         Box(Modifier.fillMaxSize().background(Color.Black))
     } else {
-        CameraBody(poses)
+        CameraBody(poses, onDone)
     }
 }
 
 @Composable
-private fun CameraBody(poses: List<PoseEntity>) {
+private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
     val context = LocalContext.current
     val container = context.appContainer
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -148,6 +165,20 @@ private fun CameraBody(poses: List<PoseEntity>) {
     val photos by container.photos.photos.collectAsState(initial = emptyList())
     val counts by container.photos.countsByPose.collectAsState(initial = emptyMap())
     val lastPhoto: File? = photos.firstOrNull()?.let { container.photos.file(it) }
+
+    // Poses that already have a photo from today (local date), and whether the set just finished.
+    val doneToday: Set<String> = remember(photos) { posesDoneToday(photos) }
+    val doneTodayNow by rememberUpdatedState(doneToday)
+    var finished by remember { mutableStateOf(false) }
+    val onDoneNow by rememberUpdatedState(onDone)
+
+    // "Photo captured" flourish: the shot freezes full-screen, then shrinks into its progress segment.
+    var flying by remember { mutableStateOf<FlyingShot?>(null) }
+    // Window position of each pose's progress segment, so the frozen shot can shrink into it.
+    val segmentCenters = remember { HashMap<String, Offset>() }
+    var originInWindow by remember { mutableStateOf(Offset.Zero) }
+    val flight = remember { Animatable(0f) }
+    val haptics = LocalHapticFeedback.current
 
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
 
@@ -231,10 +262,27 @@ private fun CameraBody(poses: List<PoseEntity>) {
                     // Record the photo in the database; appScope so it finishes even if the
                     // screen is left right after the shot.
                     container.appScope.launch { container.photos.add(file, pose.id) }
-                    // Move on to the next pose after a photo is taken.
-                    if (poses.size > 1) {
-                        val next = (poses.indexOfFirst { it.id == pose.id } + 1) % poses.size
-                        selectedId = poses[next].id
+                    val done = doneTodayNow + pose.id
+                    val allDone = poses.all { it.id in done }
+                    // Otherwise move on to the next pose that has no photo yet today.
+                    var nextId: String? = null
+                    if (!allDone) {
+                        val from = poses.indexOfFirst { it.id == pose.id }
+                        nextId = (1 until poses.size)
+                            .map { poses[(from + it) % poses.size] }
+                            .firstOrNull { it.id !in done }?.id
+                    }
+                    // The pill changes (or the day finishes) once the thumbnail lands in it.
+                    scope.launch {
+                        val bmp = withContext(Dispatchers.IO) {
+                            ImageUtils.decode(file, 300)?.asImageBitmap()
+                        }
+                        if (bmp != null) {
+                            flying = FlyingShot(bmp, pose.id, nextId, allDone)
+                        } else {
+                            nextId?.let { selectedId = it }
+                            if (allDone) finished = true
+                        }
                     }
                 }
 
@@ -245,7 +293,20 @@ private fun CameraBody(poses: List<PoseEntity>) {
         )
     }
 
+    LaunchedEffect(flying) {
+        val shot = flying ?: return@LaunchedEffect
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        flight.snapTo(0f)
+        delay(260) // hold the freeze-frame so you can check the shot
+        flight.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+        shot.nextId?.let { selectedId = it }
+        flying = null
+        if (shot.finishes) finished = true
+    }
+
     fun onShutter() {
+        // Ignore taps while the previous shot is still animating.
+        if (flying != null) return
         // Tapping the shutter during a countdown cancels it.
         if (countdownJob != null) {
             countdownJob?.cancel()
@@ -270,7 +331,12 @@ private fun CameraBody(poses: List<PoseEntity>) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .onGloballyPositioned { originInWindow = it.positionInWindow() }
+    ) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
         // Ghost overlay. The front camera preview is mirrored, so mirror the ghost to match.
@@ -366,6 +432,29 @@ private fun CameraBody(poses: List<PoseEntity>) {
             }
         }
 
+        // The captured photo: frozen full-screen, then shrinking into its progress segment.
+        flying?.let { shot ->
+            Image(
+                bitmap = shot.bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val t = flight.value
+                        val target = (segmentCenters[shot.poseId] ?: Offset.Zero) - originInWindow
+                        val s = 1f - 0.93f * t
+                        scaleX = s
+                        scaleY = s
+                        translationX = (target.x - size.width / 2f) * t
+                        translationY = (target.y - size.height / 2f) * t
+                        shape = RoundedCornerShape((t * 160f).dp)
+                        clip = true
+                        alpha = if (t < 0.85f) 1f else (1f - t) / 0.15f
+                    }
+            )
+        }
+
         // Countdown number.
         if (countdown > 0) {
             Text(
@@ -385,10 +474,20 @@ private fun CameraBody(poses: List<PoseEntity>) {
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            TodayProgress(
+                poses = poses,
+                doneToday = doneToday,
+                currentId = currentPose.id,
+                onSegmentCenter = { id, c -> segmentCenters[id] = c }
+            )
+
+            Spacer(Modifier.height(10.dp))
+
             PoseSelector(
                 poses = poses,
                 selectedIndex = poseIndex,
                 counts = counts,
+                doneToday = doneToday,
                 onSelect = { selectedId = poses[it].id }
             )
 
@@ -425,6 +524,97 @@ private fun CameraBody(poses: List<PoseEntity>) {
                 ) {
                     FlipCameraIcon(modifier = Modifier.size(30.dp))
                 }
+            }
+        }
+
+        // "Done for today" overlay: fades to black, holds a moment, then returns home.
+        AnimatedVisibility(
+            visible = finished,
+            enter = fadeIn(tween(700)),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable(enabled = false) {},
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "DONE FOR TODAY",
+                    color = Color.White,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = 6.sp
+                )
+            }
+        }
+        LaunchedEffect(finished) {
+            if (finished) {
+                delay(2200)
+                onDoneNow()
+            }
+        }
+    }
+}
+
+/** A just-captured photo on its way into its progress segment. */
+private class FlyingShot(
+    val bitmap: ImageBitmap,
+    val poseId: String,
+    val nextId: String?,
+    val finishes: Boolean
+)
+
+/** Ids of poses that have at least one photo taken today (local time). */
+private fun posesDoneToday(photos: List<PhotoEntity>): Set<String> {
+    val today = LocalDate.now()
+    val zone = ZoneId.systemDefault()
+    return photos.asSequence()
+        .filter { Instant.ofEpochMilli(it.takenAt).atZone(zone).toLocalDate() == today }
+        .mapNotNull { it.poseId }
+        .toSet()
+}
+
+/** One segment per pose: filled when done today, outlined for the pose currently selected. */
+@Composable
+private fun TodayProgress(
+    poses: List<PoseEntity>,
+    doneToday: Set<String>,
+    currentId: String,
+    onSegmentCenter: (String, Offset) -> Unit
+) {
+    val doneCount = poses.count { it.id in doneToday }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "$doneCount of ${poses.size} today",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color(0x99000000))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(0.7f),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            poses.forEach { pose ->
+                val done = pose.id in doneToday
+                val color by animateColorAsState(
+                    if (done) Color.White else Color(0x66FFFFFF),
+                    label = "seg"
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { onSegmentCenter(pose.id, it.boundsInWindow().center) }
+                        .height(if (pose.id == currentId) 6.dp else 4.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                )
             }
         }
     }

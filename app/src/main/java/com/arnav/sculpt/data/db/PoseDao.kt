@@ -23,4 +23,7 @@ interface PoseDao {
 
     @Update
     suspend fun update(pose: PoseEntity)
+
+    @Update
+    suspend fun updateAll(poses: List<PoseEntity>)
 }

@@ -1,6 +1,12 @@
 package com.arnav.sculpt.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -160,7 +166,14 @@ fun WheelPill(
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AnimatedContent(targetState = pillText, label = "pillText") { text ->
+                AnimatedContent(
+                    targetState = pillText,
+                    transitionSpec = {
+                        (slideInHorizontally(tween(260)) { it } + fadeIn(tween(260))) togetherWith
+                            (slideOutHorizontally(tween(260)) { -it } + fadeOut(tween(200)))
+                    },
+                    label = "pillText"
+                ) { text ->
                     Text(
                         text = text,
                         color = Color.White,

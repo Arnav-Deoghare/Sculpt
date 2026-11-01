@@ -11,6 +11,7 @@ object SettingsStore {
     private const val KEY_GHOST_ALPHA = "ghost_alpha"
     private const val KEY_TIMER = "timer_seconds"
     private const val KEY_FLASH = "flash_mode"
+    private const val KEY_HANDS_FREE = "hands_free"
 
     // Only read by the one-time migration from the pre-database version.
     private const val KEY_LEGACY_CUSTOM_NAME = "custom_pose_name"
@@ -66,6 +67,14 @@ object SettingsStore {
 
     fun setFlashMode(context: Context, mode: Int) {
         prefs(context).edit().putInt(KEY_FLASH, mode).apply()
+    }
+
+    /** Hands-free mode: start the timer automatically for the next pose. Off by default. */
+    fun handsFree(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_HANDS_FREE, false)
+
+    fun setHandsFree(context: Context, on: Boolean) {
+        prefs(context).edit().putBoolean(KEY_HANDS_FREE, on).apply()
     }
 
     // ---- One-time migration -----------------------------------------------
