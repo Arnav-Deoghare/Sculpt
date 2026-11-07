@@ -120,13 +120,30 @@ fun SettingsScreen(dark: Boolean, onDarkChange: (Boolean) -> Unit) {
             Spacer(Modifier.height(24.dp))
 
             // ---- Appearance ----
-//
+            SectionLabel("Appearance")
+            SectionCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Segment("Dark", dark, Modifier.weight(1f)) { onDarkChange(true) }
+                    Segment("Light", !dark, Modifier.weight(1f)) { onDarkChange(false) }
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
 
             // ---- Poses ----
             SectionLabel("Poses")
-
-
+            Text(
+                text = "Switch poses on or off. Drag ≡ to set the shooting order.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             SectionCard {
                 Column {
                     order.forEachIndexed { index, pose ->
@@ -229,7 +246,11 @@ fun SettingsScreen(dark: Boolean, onDarkChange: (Boolean) -> Unit) {
                 }
             }
             Spacer(Modifier.height(6.dp))
-
+            Text(
+                text = "Hold a custom pose to rename or remove it. Removing keeps its photos in the gallery.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             notice?.let {
                 Spacer(Modifier.height(4.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -248,7 +269,11 @@ fun SettingsScreen(dark: Boolean, onDarkChange: (Boolean) -> Unit) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Hands-free capture", style = MaterialTheme.typography.bodyLarge)
-                        
+                        Text(
+                            text = "Tap the shutter once and every remaining pose is shot 3 seconds apart. Tap again to stop.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Spacer(Modifier.width(12.dp))
                     Switch(

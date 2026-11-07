@@ -90,6 +90,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val TAG = "SculptCamera"
+private const val HANDS_FREE_SECONDS = 3
 private val TIMER_OPTIONS = listOf(0, 3, 5, 10)
 
 @Composable
@@ -171,6 +172,10 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
     val doneTodayNow by rememberUpdatedState(doneToday)
     var finished by remember { mutableStateOf(false) }
     val onDoneNow by rememberUpdatedState(onDone)
+
+    // Hands-free: one tap starts a run that shoots each remaining pose every few seconds.
+    val handsFree = remember { SettingsStore.handsFree(context) }
+    var autoRun by remember { mutableStateOf(false) }
 
     // "Photo captured" flourish: the shot freezes full-screen, then shrinks into its progress segment.
     var flying by remember { mutableStateOf<FlyingShot?>(null) }
@@ -281,6 +286,7 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
                             flying = FlyingShot(bmp, pose.id, nextId, allDone)
                         } else {
                             nextId?.let { selectedId = it }
+                            autoRun = false
                             if (allDone) finished = true
                         }
                     }
@@ -293,32 +299,10 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
         )
     }
 
-    LaunchedEffect(flying) {
-        val shot = flying ?: return@LaunchedEffect
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-        flight.snapTo(0f)
-        delay(260) // hold the freeze-frame so you can check the shot
-        flight.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
-        shot.nextId?.let { selectedId = it }
-        flying = null
-        if (shot.finishes) finished = true
-    }
-
-    fun onShutter() {
-        // Ignore taps while the previous shot is still animating.
-        if (flying != null) return
-        // Tapping the shutter during a countdown cancels it.
-        if (countdownJob != null) {
-            countdownJob?.cancel()
-            return
-        }
-        if (timerSeconds == 0) {
-            capture(currentPose)
-            return
-        }
+    fun startCountdown(seconds: Int) {
         countdownJob = scope.launch {
             try {
-                for (i in timerSeconds downTo 1) {
+                for (i in seconds downTo 1) {
                     countdown = i
                     delay(1000)
                 }
@@ -329,6 +313,44 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
                 countdownJob = null
             }
         }
+    }
+
+    LaunchedEffect(flying) {
+        val shot = flying ?: return@LaunchedEffect
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        flight.snapTo(0f)
+        delay(260) // hold the freeze-frame so you can check the shot
+        flight.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+        shot.nextId?.let { selectedId = it }
+        flying = null
+        if (shot.finishes) {
+            autoRun = false
+            finished = true
+        } else if (autoRun) {
+            // Hands-free: line up the next pose automatically.
+            startCountdown(HANDS_FREE_SECONDS)
+        }
+    }
+
+    fun onShutter() {
+        // Tapping the shutter during a countdown or a hands-free run stops it.
+        if (countdownJob != null || autoRun) {
+            autoRun = false
+            countdownJob?.cancel()
+            return
+        }
+        // Ignore taps while the previous shot is still animating.
+        if (flying != null) return
+        if (handsFree) {
+            autoRun = true
+            startCountdown(HANDS_FREE_SECONDS)
+            return
+        }
+        if (timerSeconds == 0) {
+            capture(currentPose)
+            return
+        }
+        startCountdown(timerSeconds)
     }
 
     Box(
@@ -466,6 +488,19 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
             )
         }
 
+        // Hands-free: say which pose is coming up.
+        if (autoRun && countdown > 0) {
+            Text(
+                text = currentPose.name,
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 150.dp)
+            )
+        }
+
         // Bottom controls: pose pill sits right above the shutter row.
         Column(
             modifier = Modifier
@@ -507,7 +542,7 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
                         .border(4.dp, Color.White, CircleShape)
                         .padding(8.dp)
                         .clip(CircleShape)
-                        .background(if (countdownJob != null) Color.Red else Color.White)
+                        .background(if (countdownJob != null || autoRun) Color.Red else Color.White)
                         .clickable { onShutter() }
                 )
 
