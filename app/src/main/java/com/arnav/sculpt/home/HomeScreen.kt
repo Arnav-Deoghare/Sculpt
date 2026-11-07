@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -61,7 +62,7 @@ private fun todayState(photos: List<PhotoEntity>, poses: List<PoseEntity>): Toda
 }
 
 /**
- * The home screen: a plain black screen with one or two text buttons.
+ * The home screen: one or two text buttons over the mat floor drawn behind the app.
  * Until the guided capture flow exists, every button just opens the camera.
  */
 @Composable
@@ -72,9 +73,7 @@ fun HomeScreen(onOpenCamera: () -> Unit) {
     val state = remember(photos, poses) { todayState(photos, poses) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -124,8 +123,9 @@ private fun FancyTextButton(text: String, primary: Boolean, onClick: () -> Unit)
         label = "glow"
     )
 
-    val base = if (primary) Color(0xFF8C8C8C) else Color(0xFF555555)
-    val highlight = if (primary) Color.White else Color(0xFFB5B5B5)
+    val colors = MaterialTheme.colorScheme
+    val base = if (primary) colors.onSurfaceVariant else colors.outline
+    val highlight = if (primary) colors.onBackground else colors.onSurfaceVariant
     val brush = Brush.linearGradient(
         colors = listOf(base, highlight, base),
         start = Offset(sweep, 0f),
