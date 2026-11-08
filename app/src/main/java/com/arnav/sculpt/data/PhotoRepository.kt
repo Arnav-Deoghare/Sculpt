@@ -36,17 +36,11 @@ class PhotoRepository(
         dao.deleteByIds(photos.map { it.id })
     }
 
-    /** Old-style pose suffixes found on existing files (used once, for migration). */
-    suspend fun legacySuffixes(): Set<String> = withContext(Dispatchers.IO) {
-        PhotoFiles.allFiles(context).mapNotNull { PhotoFiles.legacySuffix(it.name) }.toSet()
-    }
-
     /**
-     * Makes the database match the photos folder: files without a row get one (their pose is
-     * worked out from the old file-name suffix with [mapLegacyPose]), and rows whose file is
-     * gone are removed.
+     * Makes the database match the photos folder: files without a row get one (with no pose),
+     * and rows whose file is gone are removed.
      */
-    suspend fun reconcile(mapLegacyPose: (String?) -> String?) = withContext(Dispatchers.IO) {
+    suspend fun reconcile() = withContext(Dispatchers.IO) {
         val files = PhotoFiles.allFiles(context)
         val rows = dao.getAll()
         val known = rows.map { it.fileName }.toSet()
@@ -54,11 +48,7 @@ class PhotoRepository(
 
         files.filter { it.name !in known }.forEach { f ->
             dao.insert(
-                PhotoEntity(
-                    fileName = f.name,
-                    takenAt = PhotoFiles.takenAt(f),
-                    poseId = mapLegacyPose(PhotoFiles.legacySuffix(f.name))
-                )
+                PhotoEntity(fileName = f.name, takenAt = PhotoFiles.takenAt(f), poseId = null)
             )
         }
 

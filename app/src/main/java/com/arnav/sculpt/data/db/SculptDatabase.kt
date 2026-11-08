@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [PhotoEntity::class, PoseEntity::class],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class SculptDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao

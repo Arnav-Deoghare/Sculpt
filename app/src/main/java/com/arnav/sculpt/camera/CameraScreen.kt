@@ -6,6 +6,7 @@ import com.arnav.sculpt.data.db.PoseEntity
 import com.arnav.sculpt.ui.WheelOption
 import com.arnav.sculpt.ui.WheelPill
 import com.arnav.sculpt.util.ImageUtils
+import com.arnav.sculpt.util.rememberDecodedImage
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
@@ -49,7 +50,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -59,7 +59,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -225,11 +224,7 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
     val ghostFile: File? = remember(currentPose.id, photos) {
         photos.firstOrNull { it.poseId == currentPose.id }?.let { container.photos.file(it) }
     }
-    val ghostBitmap by produceState<ImageBitmap?>(initialValue = null, ghostFile) {
-        value = ghostFile?.let {
-            withContext(Dispatchers.IO) { ImageUtils.decode(it, 1280)?.asImageBitmap() }
-        }
-    }
+    val ghostBitmap = rememberDecodedImage(ghostFile, 1280)
 
     DisposableEffect(lensFacing, lifecycleOwner) {
         val providerFuture = ProcessCameraProvider.getInstance(context)

@@ -8,6 +8,14 @@ captures/
 .externalNativeBuild/
 .cxx/
 
+# Kotlin compiler state
+.kotlin/
+
+# Signing secrets: never commit these
+keystore.properties
+*.jks
+*.keystore
+
 # Setup helper state
 .last-device.txt
 

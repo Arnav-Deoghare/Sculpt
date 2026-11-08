@@ -1,0 +1,1 @@
+First release: camera with ghost overlay, custom poses, gallery, and same-pose photo comparison.

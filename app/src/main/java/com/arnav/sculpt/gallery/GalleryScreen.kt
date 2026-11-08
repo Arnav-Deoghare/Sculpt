@@ -2,11 +2,12 @@ package com.arnav.sculpt.gallery
 
 import com.arnav.sculpt.appContainer
 import com.arnav.sculpt.data.db.PhotoEntity
-import com.arnav.sculpt.util.ImageUtils
+import com.arnav.sculpt.util.rememberDecodedImage
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,15 +31,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -51,27 +49,25 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-private val dayFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault())
-private val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault())
-private val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+internal val dayFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE", Locale.getDefault())
+internal val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault())
+internal val timeFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
 
-private fun zoned(millis: Long): ZonedDateTime =
+internal fun zoned(millis: Long): ZonedDateTime =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault())
 
 private fun photoWord(count: Int) = if (count == 1) "photo" else "photos"
 
 /** A photo row paired with its image file. */
-private data class GalleryPhoto(val entity: PhotoEntity, val file: File) {
+internal data class GalleryPhoto(val entity: PhotoEntity, val file: File) {
     val takenAt: Long get() = entity.takenAt
     val poseId: String? get() = entity.poseId
 }
 
 /** Name of the photo's pose (including removed custom poses), or null if it has none. */
-private fun poseLabel(photo: GalleryPhoto, names: Map<String, String>): String? =
+internal fun poseLabel(photo: GalleryPhoto, names: Map<String, String>): String? =
     photo.poseId?.let { names[it] }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -86,6 +82,7 @@ fun GalleryScreen() {
     var viewing by remember { mutableStateOf<GalleryPhoto?>(null) }
     var selection by remember { mutableStateOf<Set<String>>(emptySet()) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var comparing by remember { mutableStateOf<Pair<GalleryPhoto, GalleryPhoto>?>(null) }
     val selectionMode = selection.isNotEmpty()
 
     // Photos are sorted newest first, so groupBy keeps days newest first too.
@@ -110,6 +107,16 @@ fun GalleryScreen() {
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(onClick = { selection = emptySet() }) { Text("Cancel") }
+                    val picked = photos.filter { it.file.name in selection }
+                    if (picked.size == 2 && picked[0].poseId == picked[1].poseId) {
+                        TextButton(onClick = {
+                            val (older, newer) = photos
+                                .filter { it.file.name in selection }
+                                .sortedBy { it.takenAt }
+                            selection = emptySet()
+                            comparing = older to newer
+                        }) { Text("Compare") }
+                    }
                     TextButton(onClick = { confirmDelete = true }) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
@@ -126,6 +133,24 @@ fun GalleryScreen() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
                 )
+                val comparable = comparableGroups(photos)
+                if (comparable.isNotEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Compare",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clickable {
+                                    val newestPose = comparable.first().second
+                                    comparing = newestPose.last() to newestPose.first()
+                                }
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        )
+                    }
+                }
             }
 
             if (photos.isEmpty()) {
@@ -173,6 +198,16 @@ fun GalleryScreen() {
             }
         }
 
+        comparing?.let { (before, after) ->
+            CompareView(
+                photos = photos,
+                names = names,
+                initialBefore = before,
+                initialAfter = after,
+                onClose = { comparing = null }
+            )
+        }
+
         viewing?.let { photo ->
             PhotoViewer(
                 photo = photo,
@@ -207,7 +242,7 @@ fun GalleryScreen() {
 }
 
 @Composable
-private fun DayHeader(date: LocalDate, count: Int) {
+internal fun DayHeader(date: LocalDate, count: Int) {
     Column(modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 12.dp, bottom = 4.dp)) {
         Text(
             text = date.format(dayFormat),
@@ -224,18 +259,14 @@ private fun DayHeader(date: LocalDate, count: Int) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun GalleryThumb(
+internal fun GalleryThumb(
     photo: GalleryPhoto,
     poseLabel: String?,
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, photo.file) {
-        value = withContext(Dispatchers.IO) {
-            ImageUtils.decode(photo.file, 320)?.asImageBitmap()
-        }
-    }
+    val bitmap = rememberDecodedImage(photo.file, 320)
 
     Box(
         modifier = Modifier
@@ -294,11 +325,7 @@ private fun PhotoViewer(
     BackHandler(onBack = onClose)
     var confirm by remember { mutableStateOf(false) }
 
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, photo.file) {
-        value = withContext(Dispatchers.IO) {
-            ImageUtils.decode(photo.file, 2048)?.asImageBitmap()
-        }
-    }
+    val bitmap = rememberDecodedImage(photo.file, 2048)
     val time = zoned(photo.takenAt)
     val details = buildString {
         append(time.format(dateFormat))

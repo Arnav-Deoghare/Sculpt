@@ -3,8 +3,18 @@ package com.arnav.sculpt.util
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.exifinterface.media.ExifInterface
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object ImageUtils {
 
@@ -45,4 +55,14 @@ object ImageUtils {
         val matrix = Matrix().apply { postRotate(degrees) }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
+}
+
+/** Decodes [file] off the main thread and returns it once ready (null until then, or if [file] is null). */
+@Composable
+fun rememberDecodedImage(file: File?, maxDim: Int): ImageBitmap? {
+    var image by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(file, maxDim) {
+        image = file?.let { withContext(Dispatchers.IO) { ImageUtils.decode(it, maxDim)?.asImageBitmap() } }
+    }
+    return image
 }

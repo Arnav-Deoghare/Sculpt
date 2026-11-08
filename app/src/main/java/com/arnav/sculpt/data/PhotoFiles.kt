@@ -10,15 +10,12 @@ import java.util.Locale
  * File handling for photos. Images live in the app's private internal storage (filesDir),
  * so they never show up in the system gallery and other apps cannot read them.
  *
- * File names are sculpt_yyyyMMdd_HHmmss_SSS.jpg. Photos taken by older versions of the app
- * may end with a pose suffix (sculpt_..._front.jpg); that is only used for the one-time
- * migration into the database.
+ * File names are sculpt_yyyyMMdd_HHmmss_SSS.jpg.
  */
 object PhotoFiles {
     private const val DIR_NAME = "photos"
     private const val NAME_PATTERN = "yyyyMMdd_HHmmss_SSS"
     private val TIME_REGEX = Regex("sculpt_(\\d{8}_\\d{6}_\\d{3})")
-    private val LEGACY_POSE_REGEX = Regex("sculpt_\\d{8}_\\d{6}_\\d{3}_([a-z]+)\\.jpg")
 
     fun dir(context: Context): File =
         File(context.filesDir, DIR_NAME).apply { mkdirs() }
@@ -42,8 +39,4 @@ object PhotoFiles {
         }
         return parsed ?: file.lastModified()
     }
-
-    /** The old-style pose suffix of a file name, or null if it has none. */
-    fun legacySuffix(fileName: String): String? =
-        LEGACY_POSE_REGEX.find(fileName)?.groupValues?.get(1)
 }

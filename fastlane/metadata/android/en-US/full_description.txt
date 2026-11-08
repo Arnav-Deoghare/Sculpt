@@ -1,0 +1,21 @@
+Sculpt is a private photo logbook for tracking your physique over time. Everything stays on your phone.
+
+<b>Privacy</b>
+• Only the camera permission, and no internet permission at all
+• No accounts, no ads, no analytics
+• Photos live in the app's private storage, not your gallery
+
+<b>Take consistent photos</b>
+• Front, Front bicep, Side, Back and Back flexed poses, plus your own custom poses
+• A ghost of your last photo to line yourself up
+• Self-timer, flash, front and back cameras, and hands-free capture that shoots every pose in turn
+
+<b>See your progress</b>
+• Gallery grouped by day
+• Compare your oldest and newest photo of a pose, or pick any two dates
+• Side by side, or fade one photo over the other
+• Pinch-zoom both photos together to check the same spot
+
+Dark and light themes inspired by interlocking gym-mat tiles.
+
+Sculpt is free and open source under the Apache License 2.0.

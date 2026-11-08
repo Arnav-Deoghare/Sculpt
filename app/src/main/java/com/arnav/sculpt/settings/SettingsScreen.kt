@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -138,12 +136,7 @@ fun SettingsScreen(dark: Boolean, onDarkChange: (Boolean) -> Unit) {
 
             // ---- Poses ----
             SectionLabel("Poses")
-            Text(
-                text = "Switch poses on or off. Drag ≡ to set the shooting order.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+
             SectionCard {
                 Column {
                     order.forEachIndexed { index, pose ->
@@ -246,11 +239,7 @@ fun SettingsScreen(dark: Boolean, onDarkChange: (Boolean) -> Unit) {
                 }
             }
             Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Hold a custom pose to rename or remove it. Removing keeps its photos in the gallery.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
             notice?.let {
                 Spacer(Modifier.height(4.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -269,11 +258,7 @@ fun SettingsScreen(dark: Boolean, onDarkChange: (Boolean) -> Unit) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Hands-free capture", style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            text = "Tap the shutter once and every remaining pose is shot 3 seconds apart. Tap again to stop.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+
                     }
                     Spacer(Modifier.width(12.dp))
                     Switch(

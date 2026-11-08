@@ -5,7 +5,6 @@ import android.content.Context
 import android.util.Log
 import com.arnav.sculpt.data.PhotoRepository
 import com.arnav.sculpt.data.PoseRepository
-import com.arnav.sculpt.data.SettingsStore
 import com.arnav.sculpt.data.db.SculptDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +35,7 @@ class AppContainer(private val app: Application) {
 
     private val _ready = MutableStateFlow(false)
 
-    /** True once the built-in poses exist and any old photos have been migrated. */
+    /** True once the built-in poses exist and the photo records match the photos folder. */
     val ready: StateFlow<Boolean> = _ready
 
     init {
@@ -53,31 +52,8 @@ class AppContainer(private val app: Application) {
 
     private suspend fun startup() {
         poses.ensureBuiltIns()
-
-        if (SettingsStore.isMigrated(app)) {
-            // Normal launch: just make sure the database and the photos folder agree.
-            photos.reconcile { null }
-            return
-        }
-
-        // One-time migration from the version that kept poses in file names.
-        // front -> Front, back -> Back, left/right -> Side, custom -> a custom pose with the
-        // old custom name, flexed/unflexed -> no pose (photo is kept).
-        var legacyCustomId: String? = null
-        if ("custom" in photos.legacySuffixes()) {
-            val name = SettingsStore.legacyCustomName(app).ifBlank { "Custom" }
-            legacyCustomId = poses.addCustom(name)?.id
-        }
-        photos.reconcile { suffix ->
-            when (suffix) {
-                "front" -> "front"
-                "back" -> "back"
-                "left", "right" -> "side"
-                "custom" -> legacyCustomId
-                else -> null
-            }
-        }
-        SettingsStore.setMigrated(app)
+        // Make sure the database and the photos folder agree.
+        photos.reconcile()
     }
 }
 

@@ -13,10 +13,6 @@ object SettingsStore {
     private const val KEY_FLASH = "flash_mode"
     private const val KEY_HANDS_FREE = "hands_free"
 
-    // Only read by the one-time migration from the pre-database version.
-    private const val KEY_LEGACY_CUSTOM_NAME = "custom_pose_name"
-    private const val KEY_MIGRATED = "db_migrated"
-
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -75,17 +71,5 @@ object SettingsStore {
 
     fun setHandsFree(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean(KEY_HANDS_FREE, on).apply()
-    }
-
-    // ---- One-time migration -----------------------------------------------
-
-    fun legacyCustomName(context: Context): String =
-        prefs(context).getString(KEY_LEGACY_CUSTOM_NAME, "") ?: ""
-
-    fun isMigrated(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_MIGRATED, false)
-
-    fun setMigrated(context: Context) {
-        prefs(context).edit().putBoolean(KEY_MIGRATED, true).apply()
     }
 }
