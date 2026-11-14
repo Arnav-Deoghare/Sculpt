@@ -9,6 +9,7 @@ Sculpt/
 ├── app/                  The Android app (the only Gradle module)
 ├── docs/                 Documentation (you are here)
 ├── fastlane/             App store listing text, used by F-Droid
+├── tools/                Scripts that are not part of the app (promo video renderer)
 ├── gradle/               Gradle wrapper and the version catalog
 ├── .github/              Issue forms, PR template and CI workflows
 ├── build.gradle.kts      Root build file (plugin versions only)
@@ -25,6 +26,7 @@ Sculpt/
 | `app/` | All the code, resources, tests and the Room schema | Almost every change |
 | `docs/` | Contributor and project documentation | Changing a process or the docs |
 | `fastlane/` | Store title, descriptions and per-version changelogs | Each release |
+| `tools/` | `promo-video/` draws and renders the promo videos | The look of the app changes |
 | `gradle/` | `libs.versions.toml` lists every dependency version | Adding or upgrading a library |
 | `.github/` | Bug and feature forms, PR template, `build.yml` and `release.yml` | Changing CI or templates |
 

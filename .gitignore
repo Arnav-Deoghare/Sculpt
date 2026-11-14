@@ -1,23 +1,41 @@
-# Gradle / Android
+# Gradle / Android build output
 .gradle/
 build/
 local.properties
-*.apk
-*.aab
 captures/
 .externalNativeBuild/
 .cxx/
+*.hprof
+
+# App builds are published as GitHub Releases, never committed
+*.apk
+*.aab
 
 # Kotlin compiler state
 .kotlin/
 
-# Signing secrets: never commit these
+# Secrets: signing keys, passwords and tokens. Never commit these.
 keystore.properties
+keystore.properties.backup
 *.jks
 *.keystore
+*.p12
+*.pem
+*.base64.txt
+.env
+.env.*
 
-# Local release output
-dist/
+# Node tooling (tools/promo-video)
+node_modules/
+npm-debug.log*
+
+# Rendered videos are published elsewhere, not in this repo
+*.mp4
+*.webm
+*.mov
+
+# Logs
+*.log
 
 # Setup helper state
 .last-device.txt
@@ -31,4 +49,6 @@ dist/
 
 # OS
 .DS_Store
+._*
 Thumbs.db
+Desktop.ini

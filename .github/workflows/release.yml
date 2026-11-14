@@ -67,6 +67,8 @@ jobs:
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$apksigner" verify --verbose "$apk"
           mkdir dist
+          # The project page picks the download by this exact name pattern, Sculpt-<version>.apk.
+          # See docs/RELEASING.md before changing it.
           cp "$apk" "dist/Sculpt-$VERSION.apk"
           (cd dist && sha256sum "Sculpt-$VERSION.apk" > "Sculpt-$VERSION.apk.sha256")
           cat "dist/Sculpt-$VERSION.apk.sha256"

@@ -4,6 +4,9 @@ All notable changes to Sculpt are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+- `tools/promo-video`, a script that renders the promo videos from vector art: a 720p portrait cut and a 60 fps 1080p landscape cut for X and YouTube.
+
 ## [1.0.0] - 2026-11-13
 
 First public release.

@@ -1,0 +1,13 @@
+{
+  "name": "sculpt-promo-video",
+  "private": true,
+  "type": "module",
+  "description": "Renders the Sculpt promo video and landing-page images from a canvas animation.",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "devDependencies": {
+    "mp4-muxer": "^5.2.2",
+    "puppeteer-core": "^23.11.1"
+  }
+}

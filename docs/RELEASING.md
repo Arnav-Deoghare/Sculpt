@@ -70,10 +70,14 @@ The workflow refuses to publish if any secret is missing, so an unsigned APK can
    git push origin v1.0.0
    ```
 
-7. The **Release** workflow checks the tag matches `versionName`, runs the tests, builds and signs the APK, verifies the signature, and publishes `Sculpt-X.Y.Z.apk` and `Sculpt-X.Y.Z.apk.sha256` on the Releases page.
+7. The **Release** workflow checks the tag matches `versionName`, runs the tests, builds and signs the APK, verifies the signature, and publishes `Sculpt-X.Y.Z.apk` and `Sculpt-X.Y.Z.apk.sha256` on the Releases page. The project page asks GitHub's API for the newest release and links to that APK, so it never needs editing for a new version. Keep the APK name ending in `.apk`, because the page finds it by that.
 8. Download the APK from the release, install it on a phone, and open every tab before announcing it.
 
 If the workflow fails, fix the problem, delete the tag (`git tag -d v1.0.0 && git push origin :refs/tags/v1.0.0`), and tag again.
+
+## Release file names
+
+The project page finds the download by asking GitHub's API for the newest release and picking the asset named `Sculpt-<version>.apk` (any `.apk` as a fallback). Don't rename it, and don't remove the `.apk` ending. The release workflow already names it correctly. The `.apk.sha256` file is shown next to the download automatically.
 
 ## Updating from a debug build
 
@@ -82,3 +86,7 @@ Debug builds are signed with a different key, so a release APK can't install ove
 ## F-Droid (optional)
 
 The `fastlane/metadata` folder is already laid out for F-Droid. To list the app, open a merge request on [fdroiddata](https://gitlab.com/fdroid/fdroiddata) with a metadata file pointing at this repository. Screenshots go in `fastlane/metadata/android/en-US/images/phoneScreenshots/`.
+
+## The project page
+
+The project's web page is not in this repo. It lives in the maintainer's portfolio site, at `https://arnav-deoghare.github.io/sculpt/`. It repeats the signing certificate fingerprint and links to the latest release, so if the signing key ever changes, update the fingerprint there as well as in the README.

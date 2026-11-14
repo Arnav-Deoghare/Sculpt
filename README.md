@@ -2,6 +2,8 @@
 
 A private, local-only Android photo logbook for tracking your physique over time.
 
+**Website and demo:** https://arnav-deoghare.github.io/sculpt/
+
 Take progress photos in the same pose every time, line them up with a ghost of your last photo, and compare any two photos of a pose side by side or faded over each other.
 
 ## Privacy
@@ -25,7 +27,7 @@ Your photos never leave your phone.
 
 ## Install
 
-1. Download `Sculpt-<version>.apk` from the [Releases page](../../releases). Needs Android 8.0 (API 26) or newer.
+1. Download `Sculpt-<version>.apk` from the [latest release](../../releases/latest), or use the download button on the [project page](https://arnav-deoghare.github.io/sculpt/). Needs Android 8.0 (API 26) or newer.
 2. Open the file on your phone. Android will ask you to allow installs from your browser or file manager, because the app isn't from the Play Store.
 3. Open Sculpt and allow the camera.
 
@@ -113,12 +115,11 @@ All project docs are indexed in [docs/](docs/README.md): [contributing](docs/CON
 
 ## Roadmap
 
-1. ~~Reference layouts for images~~ (done in 1.0)
-2. Auto-capture when the live view matches an old photo
-3. Post-processing to align pose and orientation
-4. Weight and body metrics
-5. Reminder notifications
-6. ~~Release-ready app: signing, shrinking, CI and F-Droid metadata~~ (done in 1.0)
+1. Auto-capture when the live view matches an old photo
+2. Post-processing to align pose and orientation
+3. Weight and body metrics
+4. Reminder notifications
+5. Encrypted backup and restore
 
 Ideas and bug reports are welcome. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
