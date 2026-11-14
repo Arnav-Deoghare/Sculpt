@@ -16,6 +16,9 @@ keystore.properties
 *.jks
 *.keystore
 
+# Local release output
+dist/
+
 # Setup helper state
 .last-device.txt
 

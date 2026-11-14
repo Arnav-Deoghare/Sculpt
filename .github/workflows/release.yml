@@ -1,5 +1,6 @@
 name: Release
 
+# Push a tag like v1.0.0 to build a signed APK and publish it on the Releases page.
 on:
   push:
     tags: ["v*"]
@@ -20,29 +21,71 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Run tests
+      - name: Check the tag matches the app version
+        run: |
+          version=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match versionName $version in app/build.gradle.kts"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Check the signing secrets exist
+        env:
+          SCULPT_STORE_BASE64: ${{ secrets.SCULPT_STORE_BASE64 }}
+          SCULPT_STORE_PASSWORD: ${{ secrets.SCULPT_STORE_PASSWORD }}
+          SCULPT_KEY_ALIAS: ${{ secrets.SCULPT_KEY_ALIAS }}
+          SCULPT_KEY_PASSWORD: ${{ secrets.SCULPT_KEY_PASSWORD }}
+        run: |
+          for name in SCULPT_STORE_BASE64 SCULPT_STORE_PASSWORD SCULPT_KEY_ALIAS SCULPT_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing repository secret $name. Refusing to publish an unsigned APK. See docs/RELEASING.md."
+              exit 1
+            fi
+          done
+
+      - name: Run tests and lint
         run: ./gradlew testDebugUnitTest lintDebug
 
-      - name: Restore signing key
+      - name: Restore the signing key
         env:
           SCULPT_STORE_BASE64: ${{ secrets.SCULPT_STORE_BASE64 }}
         run: |
-          if [ -n "$SCULPT_STORE_BASE64" ]; then
-            echo "$SCULPT_STORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-            echo "SCULPT_STORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-          else
-            echo "No signing key configured; the APK will be unsigned."
-          fi
+          echo "$SCULPT_STORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          echo "SCULPT_STORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
-      - name: Build release APK
+      - name: Build the signed release APK
         env:
           SCULPT_STORE_PASSWORD: ${{ secrets.SCULPT_STORE_PASSWORD }}
           SCULPT_KEY_ALIAS: ${{ secrets.SCULPT_KEY_ALIAS }}
           SCULPT_KEY_PASSWORD: ${{ secrets.SCULPT_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
-      - name: Publish GitHub release
+      - name: Verify the signature and name the files
+        run: |
+          apk=$(ls app/build/outputs/apk/release/*.apk)
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$apksigner" verify --verbose "$apk"
+          mkdir dist
+          cp "$apk" "dist/Sculpt-$VERSION.apk"
+          (cd dist && sha256sum "Sculpt-$VERSION.apk" > "Sculpt-$VERSION.apk.sha256")
+          cat "dist/Sculpt-$VERSION.apk.sha256"
+
+      - name: Take the release notes from the changelog
+        run: |
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' docs/CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then echo "No changelog section for $VERSION"; exit 1; fi
+          cat release-notes.md
+
+      - name: Publish the GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/*.apk
-          generate_release_notes: true
+          name: Sculpt ${{ env.VERSION }}
+          body_path: release-notes.md
+          files: |
+            dist/Sculpt-${{ env.VERSION }}.apk
+            dist/Sculpt-${{ env.VERSION }}.apk.sha256

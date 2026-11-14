@@ -59,6 +59,7 @@ com/arnav/sculpt/
 ├── camera/                  Camera tab
 │   ├── CameraScreen.kt         Preview, capture, timer, ghost overlay, hands-free
 │   ├── PoseSelector.kt         The pose wheel
+│   ├── PoseGuide.kt            Framing lines and body silhouettes drawn over the preview
 │   └── CameraIcons.kt          Flip and flash icons
 │
 ├── gallery/                 Gallery tab

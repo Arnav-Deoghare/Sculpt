@@ -188,6 +188,7 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
 
     var ghostOn by remember { mutableStateOf(SettingsStore.ghostOn(context)) }
     var ghostAlpha by remember { mutableFloatStateOf(SettingsStore.ghostAlpha(context)) }
+    var guideMode by remember { mutableStateOf(GuideMode.fromOrdinal(SettingsStore.guideMode(context))) }
     var timerSeconds by remember { mutableIntStateOf(SettingsStore.timerSeconds(context)) }
     var countdown by remember { mutableIntStateOf(0) }
     var countdownJob by remember { mutableStateOf<Job?>(null) }
@@ -373,6 +374,8 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
             }
         }
 
+        PoseGuide(mode = guideMode, poseId = currentPose.id)
+
         // Top controls: ghost toggle, pose selector, timer.
         Column(
             modifier = Modifier
@@ -422,29 +425,36 @@ private fun CameraBody(poses: List<PoseEntity>, onDone: () -> Unit) {
                 }
             }
 
-            if (ghostOn) {
-                if (ghostFile != null) {
-                    Slider(
-                        value = ghostAlpha,
-                        onValueChange = { ghostAlpha = it },
-                        onValueChangeFinished = { SettingsStore.setGhostAlpha(context, ghostAlpha) },
-                        valueRange = 0.1f..0.8f,
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .align(Alignment.CenterHorizontally)
-                    )
-                } else {
-                    Text(
-                        text = "No earlier ${currentPose.name} photo yet",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0x99000000))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Pill(text = "Guide: ${guideMode.label}") {
+                    guideMode = guideMode.next()
+                    SettingsStore.setGuideMode(context, guideMode.ordinal)
+                }
+                if (ghostOn) {
+                    if (ghostFile != null) {
+                        Slider(
+                            value = ghostAlpha,
+                            onValueChange = { ghostAlpha = it },
+                            onValueChangeFinished = { SettingsStore.setGhostAlpha(context, ghostAlpha) },
+                            valueRange = 0.1f..0.8f,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "No earlier ${currentPose.name} photo yet",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x99000000))
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }

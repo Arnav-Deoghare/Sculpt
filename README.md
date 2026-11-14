@@ -17,6 +17,7 @@ Your photos never leave your phone.
 
 - **Camera** with front/back flip, flash, a self-timer, and hands-free capture that shoots every pose in turn.
 - **Ghost overlay** of your previous photo, so you can match your position.
+- **Guide** for framing: a centre line with head and feet lines, or a faint body silhouette that matches the pose (relaxed, bicep, side, back flexed). It only shows on the live view, never in your photo.
 - **Poses**: Front, Front bicep, Side, Back and Back flexed, plus your own custom poses. Turn them on or off, rename them, and drag to set the shooting order.
 - **Gallery** grouped by day, with pose labels and multi-select delete.
 - **Compare** two photos of the same pose, defaulting to your oldest and newest. View them **side by side** or **faded** over each other, with shared pinch-zoom.
@@ -24,7 +25,27 @@ Your photos never leave your phone.
 
 ## Install
 
-Release APKs will be published on the [Releases page](../../releases). Until then, build it yourself, as below. Android 8.0 (API 26) or newer.
+1. Download `Sculpt-<version>.apk` from the [Releases page](../../releases). Needs Android 8.0 (API 26) or newer.
+2. Open the file on your phone. Android will ask you to allow installs from your browser or file manager, because the app isn't from the Play Store.
+3. Open Sculpt and allow the camera.
+
+Updates install over the top and keep your photos, as long as they're signed with the same key (every release is).
+
+### Verify your download
+
+Each release also has a `.sha256` file. To check the APK wasn't changed in transit:
+
+```bash
+shasum -a 256 Sculpt-1.0.0.apk        # compare with the .sha256 file
+```
+
+Releases are signed with a key whose certificate fingerprint is:
+
+```
+SHA-256  C7:C3:AB:62:50:DE:5E:1F:19:7B:EA:35:FC:73:42:07:EC:BF:A9:DC:0F:04:BE:CA:BB:94:6A:FA:3F:BD:B4:40
+```
+
+Check it with `apksigner verify --print-certs Sculpt-1.0.0.apk`. If the fingerprint doesn't match, don't install it.
 
 ## Build from source
 
@@ -92,12 +113,12 @@ All project docs are indexed in [docs/](docs/README.md): [contributing](docs/CON
 
 ## Roadmap
 
-1. Reference layouts for images
+1. ~~Reference layouts for images~~ (done in 1.0)
 2. Auto-capture when the live view matches an old photo
 3. Post-processing to align pose and orientation
 4. Weight and body metrics
 5. Reminder notifications
-6. Release-ready app: signing, shrinking, CI and F-Droid metadata (in progress)
+6. ~~Release-ready app: signing, shrinking, CI and F-Droid metadata~~ (done in 1.0)
 
 Ideas and bug reports are welcome. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 

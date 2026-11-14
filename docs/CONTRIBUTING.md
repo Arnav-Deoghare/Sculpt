@@ -51,11 +51,7 @@ See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for a map of the repo and where
 
 ## Releasing (maintainers)
 
-1. Update `versionCode` and `versionName` in `app/build.gradle.kts`.
-2. Add a section to `CHANGELOG.md` and a matching `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
-3. Tag the commit `vX.Y.Z` and push the tag. The release workflow builds the APK and attaches it to a GitHub release. It signs the APK when the `SCULPT_STORE_BASE64`, `SCULPT_STORE_PASSWORD`, `SCULPT_KEY_ALIAS` and `SCULPT_KEY_PASSWORD` repository secrets are set. Create the base64 value with `base64 -i release.jks`.
-
-Keep the signing key safe and backed up. Lose it and installed copies can no longer be updated.
+See [RELEASING.md](RELEASING.md) for the signing key, the GitHub secrets and the tagging steps.
 
 ## Reporting bugs and ideas
 

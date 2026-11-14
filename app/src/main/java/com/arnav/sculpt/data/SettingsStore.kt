@@ -12,6 +12,7 @@ object SettingsStore {
     private const val KEY_TIMER = "timer_seconds"
     private const val KEY_FLASH = "flash_mode"
     private const val KEY_HANDS_FREE = "hands_free"
+    private const val KEY_GUIDE = "guide_mode"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -71,5 +72,13 @@ object SettingsStore {
 
     fun setHandsFree(context: Context, on: Boolean) {
         prefs(context).edit().putBoolean(KEY_HANDS_FREE, on).apply()
+    }
+
+    /** Which camera guide is drawn: 0 off, 1 framing lines, 2 body outline. Defaults to the body outline. */
+    fun guideMode(context: Context): Int =
+        prefs(context).getInt(KEY_GUIDE, 2)
+
+    fun setGuideMode(context: Context, mode: Int) {
+        prefs(context).edit().putInt(KEY_GUIDE, mode).apply()
     }
 }

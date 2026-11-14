@@ -8,6 +8,7 @@ Sculpt is a private photo logbook for tracking your physique over time. Everythi
 <b>Take consistent photos</b>
 • Front, Front bicep, Side, Back and Back flexed poses, plus your own custom poses
 • A ghost of your last photo to line yourself up
+• A framing guide or faint body outline for each pose, shown on screen only
 • Self-timer, flash, front and back cameras, and hands-free capture that shoots every pose in turn
 
 <b>See your progress</b>
